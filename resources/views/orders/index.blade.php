@@ -35,22 +35,33 @@
                         <th class="px-5 py-3">Date</th>
                         <th class="px-5 py-3 text-right">Total</th>
                         <th class="px-5 py-3">Status</th>
+                        <th class="px-5 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($orders as $order)
                         <tr class="transition hover:bg-slate-50">
-                            <td class="whitespace-nowrap px-5 py-4 font-semibold text-slate-900">#{{ $order->id }}</td>
+                            <td class="whitespace-nowrap px-5 py-4 font-semibold text-slate-900"><a href="{{ route('orders.show', $order) }}" class="hover:text-indigo-700">#{{ $order->id }}</a></td>
                             <td class="px-5 py-4 text-slate-700">{{ $order->customer->name }}</td>
                             <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $order->order_date->format('d M Y') }}</td>
                             <td class="whitespace-nowrap px-5 py-4 text-right font-medium text-slate-900">৳ {{ number_format((float) $order->grand_total, 2) }}</td>
                             <td class="px-5 py-4">
                                 <span @class(['inline-flex rounded-full px-2.5 py-1 text-xs font-semibold', 'bg-amber-100 text-amber-800' => $order->status->value === 'pending', 'bg-emerald-100 text-emerald-800' => $order->status->value === 'completed'])>{{ ucfirst($order->status->value) }}</span>
                             </td>
+                            <td class="whitespace-nowrap px-5 py-4 text-right">
+                                @if ($order->status->value === 'pending')
+                                    <form method="POST" action="{{ route('orders.complete', $order) }}" onsubmit="return confirm('Complete this order? Stock will be deducted.');">
+                                        @csrf
+                                        <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700">Complete</button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('orders.show', $order) }}" class="text-sm font-semibold text-indigo-700 hover:text-indigo-900">View</a>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-14 text-center text-sm text-slate-500">No orders found. Create your first sales order to begin.</td>
+                            <td colspan="6" class="px-5 py-14 text-center text-sm text-slate-500">No orders found. Create your first sales order to begin.</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -8,5 +8,8 @@ Route::redirect('/', '/orders');
 Route::resource('orders', OrderController::class)->only([
     'index',
     'create',
+    'show',
     'store',
 ]);
+
+Route::post('orders/{order}/complete', [OrderController::class, 'complete'])->name('orders.complete');
