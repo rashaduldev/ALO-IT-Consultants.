@@ -10,6 +10,9 @@
         </div>
         <div class="flex flex-wrap gap-3">
             <a href="{{ route('orders.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Back to orders</a>
+            @if ($order->status->value === 'completed')
+                <a href="{{ route('orders.invoice', $order) }}" class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100">View invoice</a>
+            @endif
             @if ($order->status->value === 'pending')
                 <form method="POST" action="{{ route('orders.complete', $order) }}" onsubmit="return confirm('Complete this order? Stock will be deducted.');">
                     @csrf
