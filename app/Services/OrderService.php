@@ -12,7 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class OrderService
 {
-    public function __construct(private PricingCalculator $pricingCalculator) {}
+    public function __construct(
+        private PricingCalculator $pricingCalculator,
+        private AccountingService $accountingService,
+    ) {}
 
     /**
      * @param  array{customer_id: int, order_date: string, discount?: int|float|string|null, items: array<int, array{product_id: int, quantity: int}>}  $validatedOrder
@@ -107,6 +110,7 @@ class OrderService
                 $product->decrement('stock_quantity', $requiredQuantities->get($product->id));
             }
 
+            $this->accountingService->recordSaleJournal($lockedOrder);
             $lockedOrder->update(['status' => OrderStatus::Completed]);
 
             return $lockedOrder->fresh(['customer', 'items.product']);
