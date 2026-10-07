@@ -19,7 +19,7 @@
                     <a href="{{ route('orders.create') }}" @class(['rounded-lg px-3 py-2 transition', 'bg-indigo-50 text-indigo-700' => request()->routeIs('orders.create'), 'text-slate-600 hover:bg-slate-100 hover:text-slate-950' => ! request()->routeIs('orders.create')])>New Order</a>
                     <span class="cursor-not-allowed rounded-lg px-3 py-2 text-slate-400" title="Available in a later step">Customers</span>
                     <span class="cursor-not-allowed rounded-lg px-3 py-2 text-slate-400" title="Available in a later step">Products</span>
-                    <span class="cursor-not-allowed rounded-lg px-3 py-2 text-slate-400" title="Available in a later step">Accounting Dashboard</span>
+                    <a href="{{ route('accounting.index') }}" @class(['rounded-lg px-3 py-2 transition', 'bg-indigo-50 text-indigo-700' => request()->routeIs('accounting.*'), 'text-slate-600 hover:bg-slate-100 hover:text-slate-950' => ! request()->routeIs('accounting.*')])>Accounting Dashboard</a>
                 </nav>
             </div>
         </header>
