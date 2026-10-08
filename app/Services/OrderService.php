@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Events\OrderCompleted;
+use App\Exceptions\InsufficientStockException;
 use App\Exceptions\OrderCompletionException;
 use App\Models\Order;
 use App\Models\Product;
@@ -14,7 +16,6 @@ class OrderService
 {
     public function __construct(
         private PricingCalculator $pricingCalculator,
-        private AccountingService $accountingService,
     ) {}
 
     /**
@@ -101,17 +102,15 @@ class OrderService
             $unavailableProducts = $this->unavailableProducts($products, $requiredQuantities);
 
             if ($unavailableProducts->isNotEmpty()) {
-                throw new OrderCompletionException(
-                    'Order cannot be completed. Insufficient stock for: '.$unavailableProducts->implode(', ').'.',
-                );
+                throw new InsufficientStockException($unavailableProducts->values()->all());
             }
 
             foreach ($products as $product) {
                 $product->decrement('stock_quantity', $requiredQuantities->get($product->id));
             }
 
-            $this->accountingService->recordSaleJournal($lockedOrder);
             $lockedOrder->update(['status' => OrderStatus::Completed]);
+            OrderCompleted::dispatch($lockedOrder);
 
             return $lockedOrder->fresh(['customer', 'items.product']);
         });

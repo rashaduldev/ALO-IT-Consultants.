@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
 use App\Exceptions\OrderCompletionException;
+use App\Http\Requests\CompleteOrderRequest;
 use App\Http\Requests\StoreOrderRequest;
 use App\Models\Customer;
 use App\Models\Order;
@@ -59,8 +60,10 @@ class OrderController extends Controller
             ->with('success', "Order #{$order->id} was created as pending.");
     }
 
-    public function complete(Order $order, OrderService $orderService): RedirectResponse
+    public function complete(CompleteOrderRequest $request, Order $order, OrderService $orderService): RedirectResponse
     {
+        $request->validated();
+
         try {
             $completedOrder = $orderService->completeOrder($order);
         } catch (OrderCompletionException $exception) {
