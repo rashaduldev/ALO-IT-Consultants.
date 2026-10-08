@@ -11,6 +11,11 @@ class PostLedgerEntries
 
     public function handle(OrderCompleted $event): void
     {
-        $this->accountingService->postSalesOrderToLedger($event->order);
+        $journalEntry = $this->accountingService->postSalesOrderToLedger($event->order);
+
+        \App\Services\AuditLogger::log($event->order, 'ledger_posted', "Balanced double-entry journal {$journalEntry->reference} posted.", [
+            'journal_id' => $journalEntry->id,
+            'reference' => $journalEntry->reference,
+        ]);
     }
 }

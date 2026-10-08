@@ -59,4 +59,12 @@ class Order extends Model
     {
         return $this->hasOne(JournalEntry::class);
     }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\MorphMany<AuditLog, $this>
+     */
+    public function auditLogs(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(AuditLog::class, 'auditable')->orderBy('id');
+    }
 }

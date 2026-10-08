@@ -29,6 +29,17 @@ class AccountingController extends Controller
             ->limit(8)
             ->get();
 
+        $journalTotals = \App\Models\JournalEntryLine::query()
+            ->selectRaw('COALESCE(SUM(debit), 0) as total_debit, COALESCE(SUM(credit), 0) as total_credit')
+            ->first();
+
+        $auditTotalDebit = (float) ($journalTotals?->total_debit ?? 0);
+        $auditTotalCredit = (float) ($journalTotals?->total_credit ?? 0);
+        $auditTotalDebitCents = (int) round($auditTotalDebit * 100);
+        $auditTotalCreditCents = (int) round($auditTotalCredit * 100);
+        $discrepancyCents = abs($auditTotalDebitCents - $auditTotalCreditCents);
+        $isLedgerBalanced = $discrepancyCents === 0;
+
         return view('accounting.index', [
             'accounts' => $accounts,
             'totalRevenue' => $keyAccounts->get('4000')?->latestLedgerEntry?->running_balance ?? '0.00',
@@ -41,6 +52,10 @@ class AccountingController extends Controller
                 ->whereBetween('order_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
                 ->sum('grand_total'),
             'recentJournalEntries' => $recentJournalEntries,
+            'auditTotalDebit' => number_format($auditTotalDebit, 2),
+            'auditTotalCredit' => number_format($auditTotalCredit, 2),
+            'auditDiscrepancy' => number_format($discrepancyCents / 100, 2),
+            'isLedgerBalanced' => $isLedgerBalanced,
         ]);
     }
 

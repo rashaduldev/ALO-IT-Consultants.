@@ -5,7 +5,17 @@
         <p class="mt-2 text-sm text-slate-600">Live balances and sales activity generated from completed sales orders.</p>
     </div>
 
-    <section class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {{-- Financial Invariant Guard Check: Global Double-Entry Parity --}}
+    <div data-aos="fade-up" data-aos-delay="50" class="mt-6">
+        <x-ledger-audit-widget 
+            :is-balanced="$isLedgerBalanced" 
+            :total-debit="$auditTotalDebit" 
+            :total-credit="$auditTotalCredit" 
+            :discrepancy="$auditDiscrepancy" 
+        />
+    </div>
+
+    <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article data-aos="fade-up" data-aos-delay="100" class="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-indigo-200">
             <p class="text-sm font-medium text-indigo-700">Sales revenue</p>
             <p class="mt-2 text-2xl font-bold tracking-tight text-indigo-950">৳ {{ number_format((float) $totalRevenue, 2) }}</p>

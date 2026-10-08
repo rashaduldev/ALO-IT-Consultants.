@@ -72,6 +72,11 @@ class OrderService
                 ]);
             }
 
+            AuditLogger::log($order, 'order_created', "Order #{$order->id} created in Pending state.", [
+                'grand_total' => $order->grand_total,
+                'items_count' => count($orderItems),
+            ]);
+
             return $order->load(['customer', 'items.product']);
         });
     }
@@ -109,7 +114,14 @@ class OrderService
                 $product->decrement('stock_quantity', $requiredQuantities->get($product->id));
             }
 
+            AuditLogger::log($lockedOrder, 'stock_deducted', 'Inventory quantities reserved and deducted atomically.', [
+                'products_count' => $products->count(),
+            ]);
+
             $lockedOrder->update(['status' => OrderStatus::Completed]);
+
+            AuditLogger::log($lockedOrder, 'order_completed', "Order #{$lockedOrder->id} status transitioned to Completed.");
+
             OrderCompleted::dispatch($lockedOrder);
 
             return $lockedOrder->fresh(['customer', 'items.product']);

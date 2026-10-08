@@ -20,6 +20,12 @@ class OrderController extends Controller
     {
         $selectedStatus = OrderStatus::tryFrom($request->string('status')->toString());
 
+        $statusCounts = [
+            'all' => Order::query()->count(),
+            'pending' => Order::query()->where('status', OrderStatus::Pending->value)->count(),
+            'completed' => Order::query()->where('status', OrderStatus::Completed->value)->count(),
+        ];
+
         $orders = Order::query()
             ->with('customer')
             ->when($selectedStatus, fn ($query) => $query->where('status', $selectedStatus->value))
@@ -30,6 +36,7 @@ class OrderController extends Controller
         return view('orders.index', [
             'orders' => $orders,
             'selectedStatus' => $selectedStatus,
+            'statusCounts' => $statusCounts,
         ]);
     }
 
@@ -46,7 +53,7 @@ class OrderController extends Controller
 
     public function show(Order $order): View
     {
-        $order->load(['customer', 'items.product']);
+        $order->load(['customer', 'items.product', 'auditLogs', 'journalEntry']);
 
         return view('orders.show', ['order' => $order]);
     }
