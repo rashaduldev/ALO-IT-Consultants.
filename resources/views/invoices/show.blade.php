@@ -1,41 +1,59 @@
 <x-layouts.app title="{{ $invoiceNumber }} · ALO POS">
     <style>
         @media print {
+            /* Critical: Neutralize AOS transforms and opacity for print & PDF generation */
+            [data-aos] {
+                opacity: 1 !important;
+                transform: none !important;
+                filter: none !important;
+                transition: none !important;
+                animation: none !important;
+            }
+
             header,
-            .print-hidden {
+            .print-hidden,
+            nav {
                 display: none !important;
             }
 
             body {
                 background: #ffffff !important;
+                color: #000000 !important;
             }
 
             main {
                 max-width: none !important;
                 padding: 0 !important;
+                margin: 0 !important;
             }
 
             .invoice-sheet {
                 border: 0 !important;
                 box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100% !important;
             }
         }
     </style>
 
     @if (! $isCompleted)
-        <section class="mx-auto max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
+        <section data-aos="zoom-in" data-aos-duration="500" class="mx-auto max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
             <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">Pending order</span>
             <h1 class="mt-4 text-2xl font-bold tracking-tight text-amber-950">Invoice unavailable until completion</h1>
             <p class="mt-2 text-sm leading-6 text-amber-800">Order #{{ $order->id }} must be completed before an invoice and its accounting entry can be issued.</p>
             <a href="{{ route('orders.show', $order) }}" class="print-hidden mt-6 inline-flex rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-800">Return to order</a>
         </section>
     @else
-        <div class="print-hidden mb-6 flex justify-end gap-3">
-            <a href="{{ route('orders.show', $order) }}" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Back to order</a>
-            <button type="button" onclick="window.print()" class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Print invoice</button>
+        <div data-aos="fade-down" data-aos-duration="500" class="print-hidden mb-6 flex justify-end gap-3">
+            <a href="{{ route('orders.show', $order) }}" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:shadow-sm">Back to order</a>
+            <button type="button" onclick="window.print()" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 hover:shadow-md active:scale-95">
+                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                Print invoice
+            </button>
         </div>
 
-        <article class="invoice-sheet mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+        <article data-aos="fade-up" data-aos-duration="600" class="invoice-sheet mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10 transition-all duration-300">
             <header class="flex flex-col gap-6 border-b border-slate-200 pb-8 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <div class="flex items-center gap-3">

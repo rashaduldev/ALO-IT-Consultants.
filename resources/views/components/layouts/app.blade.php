@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $title ?? 'ALO POS' }}</title>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" integrity="sha512-1cK78a1o+ht2JcaW6g8U8eiHdnyxU7076WKWYK48EX42hEx4in6XCUN2ma85ckx74ZD53fc9z7hyGhEGt74ecg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     </head>
     <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <header class="border-b border-slate-200 bg-white">
@@ -30,5 +31,16 @@
         </main>
 
         @stack('scripts')
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js" integrity="sha512-A7AYk1fGKX6S2SsHywmPkrnzTZHrgiVT7GcQkLGDe2ev0aWb8zejytzS8wjo7PGEXKqJOrjQ4oORtnimIRZBtw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                AOS.init({
+                    duration: 600,
+                    easing: 'ease-in-out',
+                    once: true,
+                    offset: 40,
+                });
+            });
+        </script>
     </body>
 </html>

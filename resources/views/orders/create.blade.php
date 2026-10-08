@@ -1,7 +1,7 @@
 <x-layouts.app title="New Order · ALO POS">
     @php($oldItems = old('items', [['product_id' => '', 'quantity' => 1]]))
 
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div data-aos="fade-down" data-aos-duration="500" class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <p class="text-sm font-semibold uppercase tracking-wider text-indigo-600">Sales order</p>
             <h1 class="mt-1 text-3xl font-bold tracking-tight text-slate-950">Create new order</h1>
@@ -14,7 +14,7 @@
         @csrf
 
         <div class="space-y-6">
-            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section data-aos="fade-up" data-aos-delay="100" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 transition-all duration-300">
                 <h2 class="text-lg font-semibold text-slate-950">Order details</h2>
                 <div class="mt-5 grid gap-5 sm:grid-cols-2">
                     <div>
@@ -40,7 +40,7 @@
                 </div>
             </section>
 
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <section data-aos="fade-up" data-aos-delay="200" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300">
                 <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-950">Line items</h2>
@@ -99,7 +99,7 @@
             </section>
         </div>
 
-        <aside class="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-6">
+        <aside data-aos="fade-up" data-aos-delay="300" class="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-6 transition-all duration-300">
             <h2 class="text-lg font-semibold text-slate-950">Order summary</h2>
             <div class="mt-5">
                 <label for="discount" class="mb-1.5 block text-sm font-medium text-slate-700">Discount</label>
@@ -127,7 +127,7 @@
     </form>
 
     <template id="order-item-template">
-        <tr data-item-row>
+        <tr data-item-row class="animate-fade-in transition-colors hover:bg-slate-50/50">
             <td class="px-5 py-4 sm:px-6">
                 <select name="items[__INDEX__][product_id]" data-product-select aria-label="Product" class="block w-full min-w-64 rounded-lg border-slate-300 bg-white text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                     <option value="">Select a product</option>
