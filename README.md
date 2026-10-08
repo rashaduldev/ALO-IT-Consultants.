@@ -32,43 +32,75 @@ The application separates HTTP concerns, order workflow rules, pricing, and acco
 - Double-entry journal postings and per-account running balances
 - Accounting dashboard with sales, receivables, tax payable, account balances, and recent journals
 
-## Order Completion and Ledger Posting Flow
+## Enterprise Transaction & Financial Lifecycle Flow
 
 ```mermaid
 sequenceDiagram
-    actor User as Sales User
-    participant UI as Blade Order Screen
-    participant Controller as OrderController
-    participant Service as OrderService
-    participant DB as Database
-    participant Event as OrderCompleted
-    participant Listener as PostLedgerEntries
-    participant Accounting as AccountingService
+    autonumber
+    actor Cashier as POS User / Cashier
+    participant UI as Blade Frontend (Shadcn UI)
+    participant Ctrl as OrderController
+    participant Svc as OrderService
+    participant DB as Relational Database
+    participant Event as OrderCompleted Event
+    participant Queue as Laravel Background Queue
+    participant Acct as AccountingService (Ledger)
+    participant Mail as Mailer Worker (PDF Invoice)
+    participant Audit as AuditLogger
 
-    User->>UI: Confirm pending order
-    UI->>Controller: POST /orders/{order}/complete
-    Controller->>Service: completeOrder(order)
-    Service->>DB: BEGIN TRANSACTION
-    Service->>DB: Lock order and product rows (FOR UPDATE)
-    Service->>DB: Verify grouped requested quantity <= stock
+    %% Step 1: Order Creation
+    Cashier->>UI: Submit Sales Order Payload
+    UI->>Ctrl: POST /orders (StoreOrderRequest)
+    Ctrl->>Svc: createOrder(validatedData)
+    activate Svc
+    Svc->>DB: BEGIN TRANSACTION
+    Svc->>DB: Verify Aggregate Stock Availability
+    Svc->>DB: INSERT INTO 'orders' (status: pending)
+    Svc->>DB: INSERT INTO 'order_items' (unit price snapshots)
+    Svc->>Audit: Log 'order_created' event
+    Svc->>DB: COMMIT TRANSACTION
+    Svc-->>Ctrl: Return Pending Order
+    deactivate Svc
+    Ctrl-->>UI: Redirect to Order Details Screen
 
-    alt Stock unavailable
-        Service-->>Controller: InsufficientStockException
-        Controller-->>UI: Show product-specific stock error
-        Service->>DB: ROLLBACK
-    else Stock available
-        Service->>DB: Deduct product stock
-        Service->>DB: Mark order as completed
-        Service->>Event: Dispatch OrderCompleted
-        Event->>Listener: Handle event synchronously
-        Listener->>Accounting: postSalesOrderToLedger(order)
-        Accounting->>DB: Lock accounts 1100, 4000, 2100
-        Accounting->>Accounting: Assert total debit equals total credit
-        Accounting->>DB: Create journal header, lines, and ledger entries
-        Service->>DB: COMMIT
-        Service-->>Controller: Completed order
-        Controller-->>UI: Success confirmation and invoice access
-    end
+    %% Step 2: Order Completion & Concurrency Control
+    Cashier->>UI: Click "Complete Order"
+    UI->>Ctrl: POST /orders/{id}/complete
+    Ctrl->>Svc: completeOrder(order)
+    activate Svc
+    Svc->>DB: BEGIN TRANSACTION
+    Note over Svc,DB: Concurrency Control: SELECT ... FOR UPDATE
+    Svc->>DB: Lock Order & Product Rows
+    Svc->>DB: Verify Stock >= Grouped Quantities
+    Svc->>DB: Decrement Product stock_quantity
+    Svc->>Audit: Log 'stock_deducted'
+    Svc->>DB: UPDATE orders SET status = 'completed'
+    Svc->>Audit: Log 'order_completed'
+    
+    %% Step 3: Synchronous Accounting Inside Transaction
+    Svc->>Event: dispatch(OrderCompleted)
+    Event->>Acct: Handle PostLedgerEntries (Sync)
+    activate Acct
+    Acct->>DB: Lock Accounts (1100 AR, 4000 Revenue, 2100 Tax)
+    Note over Acct: Invariant Check: SUM(Debits) == SUM(Credits)
+    Acct->>DB: INSERT INTO journal_entries (Header)
+    Acct->>DB: INSERT INTO journal_entry_lines (Debits & Credits)
+    Acct->>DB: INSERT INTO ledger_entries (Running Balances)
+    Acct->>Audit: Log 'ledger_posted'
+    deactivate Acct
+
+    Svc->>DB: COMMIT TRANSACTION (Inventory & Ledger Atomic)
+    deactivate Svc
+
+    %% Step 4: Asynchronous Post-Completion Processing
+    Event->>Queue: Dispatch SendOrderCompletedEmail (Async ShouldQueue)
+    Ctrl-->>UI: 200 OK + Invoice & Receipt Access Granted
+
+    Queue->>Mail: Process Job in Worker Thread
+    activate Mail
+    Mail->>Mail: Compile In-Memory PDF Invoice
+    Mail->>Cashier: Deliver Email with PDF Attachment
+    deactivate Mail
 ```
 
 ## Quick Installation & Setup
