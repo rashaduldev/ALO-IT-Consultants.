@@ -8,57 +8,60 @@ use App\Models\JournalEntry;
 use App\Models\LedgerEntry;
 use App\Models\Order;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AccountingService
 {
-    public function recordSaleJournal(Order $order): JournalEntry
+    public function postSalesOrderToLedger(Order $order): JournalEntry
     {
-        $accounts = Account::query()
-            ->whereIn('code', ['1100', '2100', '4000'])
-            ->orderBy('code')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('code');
+        return DB::transaction(function () use ($order): JournalEntry {
+            $accounts = Account::query()
+                ->whereIn('code', ['1100', '2100', '4000'])
+                ->orderBy('code')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('code');
 
-        $this->ensureRequiredAccountsExist($accounts);
+            $this->ensureRequiredAccountsExist($accounts);
 
-        $journalLines = [
-            ['account' => $accounts->get('1100'), 'debit' => $order->grand_total, 'credit' => '0.00'],
-            ['account' => $accounts->get('4000'), 'debit' => '0.00', 'credit' => $this->subtract($order->subtotal, $order->discount)],
-            ['account' => $accounts->get('2100'), 'debit' => '0.00', 'credit' => $order->tax],
-        ];
+            $journalLines = [
+                ['account' => $accounts->get('1100'), 'debit' => $order->grand_total, 'credit' => '0.00'],
+                ['account' => $accounts->get('4000'), 'debit' => '0.00', 'credit' => $this->subtract($order->subtotal, $order->discount)],
+                ['account' => $accounts->get('2100'), 'debit' => '0.00', 'credit' => $order->tax],
+            ];
 
-        $this->assertJournalIsBalanced($journalLines);
+            $this->assertJournalIsBalanced($journalLines);
 
-        $journalEntry = JournalEntry::query()->create([
-            'order_id' => $order->id,
-            'entry_date' => $order->order_date,
-            'description' => "Sales order #{$order->id}",
-            'reference' => "ORDER-{$order->id}",
-        ]);
-
-        foreach ($journalLines as $journalLine) {
-            $line = $journalEntry->lines()->create([
-                'account_id' => $journalLine['account']->id,
-                'debit' => $journalLine['debit'],
-                'credit' => $journalLine['credit'],
+            $journalEntry = JournalEntry::query()->create([
+                'order_id' => $order->id,
+                'entry_date' => $order->order_date,
+                'description' => "Sales order #{$order->id}",
+                'reference' => "ORDER-{$order->id}",
             ]);
 
-            LedgerEntry::query()->create([
-                'account_id' => $journalLine['account']->id,
-                'journal_entry_id' => $journalEntry->id,
-                'journal_entry_line_id' => $line->id,
-                'debit' => $journalLine['debit'],
-                'credit' => $journalLine['credit'],
-                'running_balance' => $this->nextRunningBalance(
-                    $journalLine['account'],
-                    $journalLine['debit'],
-                    $journalLine['credit'],
-                ),
-            ]);
-        }
+            foreach ($journalLines as $journalLine) {
+                $line = $journalEntry->lines()->create([
+                    'account_id' => $journalLine['account']->id,
+                    'debit' => $journalLine['debit'],
+                    'credit' => $journalLine['credit'],
+                ]);
 
-        return $journalEntry->load(['lines.account', 'ledgerEntries']);
+                LedgerEntry::query()->create([
+                    'account_id' => $journalLine['account']->id,
+                    'journal_entry_id' => $journalEntry->id,
+                    'journal_entry_line_id' => $line->id,
+                    'debit' => $journalLine['debit'],
+                    'credit' => $journalLine['credit'],
+                    'running_balance' => $this->nextRunningBalance(
+                        $journalLine['account'],
+                        $journalLine['debit'],
+                        $journalLine['credit'],
+                    ),
+                ]);
+            }
+
+            return $journalEntry->load(['lines.account', 'ledgerEntries']);
+        });
     }
 
     /**

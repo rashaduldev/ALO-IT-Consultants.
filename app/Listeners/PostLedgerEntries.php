@@ -11,6 +11,6 @@ class PostLedgerEntries
 
     public function handle(OrderCompleted $event): void
     {
-        $this->accountingService->recordSaleJournal($event->order);
+        $this->accountingService->postSalesOrderToLedger($event->order);
     }
 }
