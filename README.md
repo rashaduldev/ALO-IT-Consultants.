@@ -1,58 +1,231 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# ALO POS — Sales Orders, Invoices & Basic Accounting
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A standalone Mini POS / Sales Order and Invoicing System built as a Junior Software Developer assessment for ALO IT Consultants.
 
-## About Laravel
+The application creates pending sales orders, safely completes them against available stock, generates printable invoices, and records each completed sale using double-entry accounting.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Customer and product master data with seeded sample records
+- Dynamic order form with stock hints and real-time client-side totals
+- Server-side validation and recalculation of all prices and totals
+- Stock validation that aggregates duplicate products in an order
+- Transactional order completion with product row locks
+- Printable completed-order invoices
+- Double-entry journal entries and account-ledger running balances
+- Accounting dashboard for sales, receivables, tax payable, orders, and account movements
+- Feature tests covering order creation, completion, stock failures, journal balancing, and idempotency
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Tech stack
 
-## Learning Laravel
+- PHP 8.3+
+- Laravel 13
+- MySQL 8+
+- Blade templates
+- Tailwind CSS 4 with Vite
+- Vanilla JavaScript
+- PHPUnit
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Data model
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ ORDERS : places
+    ORDERS ||--|{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ ORDER_ITEMS : ordered_as
+    ORDERS ||--o| JOURNAL_ENTRIES : posts
+    JOURNAL_ENTRIES ||--|{ JOURNAL_ENTRY_LINES : contains
+    ACCOUNTS ||--o{ JOURNAL_ENTRY_LINES : receives
+    JOURNAL_ENTRIES ||--|{ LEDGER_ENTRIES : produces
+    ACCOUNTS ||--o{ LEDGER_ENTRIES : tracks
+    JOURNAL_ENTRY_LINES ||--o| LEDGER_ENTRIES : source
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+    CUSTOMERS {
+        bigint id PK
+        string name
+        string email UK
+    }
+    PRODUCTS {
+        bigint id PK
+        string sku UK
+        decimal price
+        integer stock_quantity
+    }
+    ORDERS {
+        bigint id PK
+        bigint customer_id FK
+        date order_date
+        string status
+        decimal subtotal
+        decimal discount
+        decimal tax
+        decimal grand_total
+    }
+    ORDER_ITEMS {
+        bigint id PK
+        bigint order_id FK
+        bigint product_id FK
+        string product_name
+        integer quantity
+        decimal unit_price
+        decimal line_total
+    }
+    ACCOUNTS {
+        bigint id PK
+        string code UK
+        string name
+        string type
+    }
+    JOURNAL_ENTRIES {
+        bigint id PK
+        bigint order_id FK
+        date entry_date
+        string reference UK
+    }
+    JOURNAL_ENTRY_LINES {
+        bigint id PK
+        bigint journal_entry_id FK
+        bigint account_id FK
+        decimal debit
+        decimal credit
+    }
+    LEDGER_ENTRIES {
+        bigint id PK
+        bigint account_id FK
+        bigint journal_entry_id FK
+        bigint journal_entry_line_id FK
+        decimal running_balance
+    }
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Accounting logic
 
-## Contributing
+All monetary values use `decimal(12,2)`. The pricing calculator uses integer cents internally to prevent floating-point drift.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+For an order with a subtotal of ৳1,000.00 and a ৳100.00 discount:
 
-## Code of Conduct
+```text
+Taxable amount = 1,000.00 − 100.00 = 900.00
+Tax (5%)       = 45.00
+Grand total    = 945.00
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+When that order is completed, one balanced journal entry is created:
 
-## Security Vulnerabilities
+| Account | Debit | Credit |
+| --- | ---: | ---: |
+| 1100 Accounts Receivable | ৳945.00 | ৳0.00 |
+| 4000 Sales Revenue | ৳0.00 | ৳900.00 |
+| 2100 Tax Payable | ৳0.00 | ৳45.00 |
+| **Total** | **৳945.00** | **৳945.00** |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Assets and expenses are debit-normal; liabilities, equity, and revenue are credit-normal. Each journal line creates one ledger entry with a persisted running balance.
 
-## License
+## Installation
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Prerequisites
+
+- PHP 8.3 or newer with `pdo_mysql`
+- Composer 2
+- Node.js 20+ and npm
+- MySQL 8+
+
+### Setup
+
+```bash
+git clone <your-github-repository-url>
+cd alo-it-task
+
+composer install
+npm install
+
+cp .env.example .env
+php artisan key:generate
+```
+
+Create a MySQL database named `alo_pos`, then update `.env` if your database credentials differ:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=alo_pos
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Run migrations, seed the sample data, and build frontend assets:
+
+```bash
+php artisan migrate --seed
+npm run build
+php artisan serve
+```
+
+For local frontend development, run this in a separate terminal instead of `npm run build`:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:8000`.
+
+## Seeded data
+
+- 4 chart-of-account records: Cash, Accounts Receivable, Tax Payable, and Sales Revenue
+- 10 customers
+- 15 products
+- Deliberately low-stock products for testing completion failures
+
+## Tests
+
+```bash
+php artisan test --compact
+```
+
+The default PHPUnit configuration uses an in-memory SQLite database. Ensure PHP has the `pdo_sqlite` extension enabled before running the feature suite. The production application uses MySQL.
+
+## Project structure
+
+```text
+app/
+├── Enums/                 # OrderStatus
+├── Exceptions/            # Completion and accounting domain failures
+├── Http/
+│   ├── Controllers/       # Thin HTTP controllers
+│   └── Requests/          # StoreOrderRequest validation
+├── Models/                # Eloquent models and relationships
+└── Services/              # Pricing, order workflow, accounting engine
+
+database/
+├── factories/             # Test data factories
+├── migrations/            # Relational schema, constraints, and indexes
+└── seeders/               # Chart of accounts, customers, products
+
+resources/views/
+├── accounting/            # Dashboard and per-account ledger
+├── components/            # Shared layout and flash message
+├── invoices/              # Printable invoice preview
+└── orders/                # Order list, form, and details
+
+tests/
+├── Feature/               # End-to-end order workflow tests
+└── Unit/                  # Pricing rounding test
+```
+
+## Screenshots
+
+Add final submission screenshots in [`docs/screenshots`](docs/screenshots):
+
+- `order-form.png`
+- `invoice.png`
+- `accounting-dashboard.png`
+
+## Key business rules
+
+- Orders begin as `pending`; stock is deducted only when completed.
+- Discounts cannot exceed the subtotal.
+- Tax is 5% of the discounted amount, rounded to two decimal places.
+- Browser totals are informational only; the server recalculates all stored totals.
+- Completion locks products, validates stock, deducts stock, posts accounting records, and marks the order completed in one transaction.
+- Completed orders cannot be completed again.
